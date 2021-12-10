@@ -33,6 +33,8 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 
+import com.oracle.tools.packager.Log;
+
 public class HomePage extends JFrame {
 
 	/**
@@ -79,15 +81,16 @@ public class HomePage extends JFrame {
 	private int freeSpace = 0;
 	private int totalSpace = 0;
 
-	// private ArrayList<JPanel> panelListG = new ArrayList<JPanel>();
+	private static ProcessGenerator PCB;
+	private DefaultListModel<String> newQueue;
 
 	public static void main(String[] args) {
+		PCB = new ProcessGenerator();
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
 					JFrame frame = new HomePage();
 					frame.setVisible(true);
-					System.out.println("I was called after line 88");
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -131,7 +134,8 @@ public class HomePage extends JFrame {
 		 * Creating a New Process Queue Frame
 		 * Adding the New Process Queue Frame to the Content Container
 		 */
-		JPanel newProcessQueueFrame = newProcessQueueFrame();
+		newQueue = new DefaultListModel<String>();
+		JPanel newProcessQueueFrame = newProcessQueueFrame(newQueue);
 		contentContainer.add(newProcessQueueFrame);
 
 		/**
@@ -178,7 +182,7 @@ public class HomePage extends JFrame {
 		mainContainer.add(contentContainer, BorderLayout.CENTER);
 	}
 
-	public HomePage(JPanel memoryFramesJPanel) {
+	public HomePage(DefaultListModel<String> processes) {
 		/**
 		 * Window Setup
 		 */
@@ -213,7 +217,7 @@ public class HomePage extends JFrame {
 		 * Creating a New Process Queue Frame
 		 * Adding the New Process Queue Frame to the Content Container
 		 */
-		JPanel newProcessQueueFrame = newProcessQueueFrame();
+		JPanel newProcessQueueFrame = newProcessQueueFrame(processes);
 		contentContainer.add(newProcessQueueFrame);
 
 		/**
@@ -235,6 +239,8 @@ public class HomePage extends JFrame {
 		 * Adding the Memory Frames Frame to the Content Container
 		 */
 		// JPanel memoryFrames = memoryFrames();
+		JPanel memoryFramesJPanel = new JPanel();
+		memoryFramesJPanel.setBackground(bg);
 		contentContainer.add(memoryFramesJPanel);
 
 		/**
@@ -343,7 +349,7 @@ public class HomePage extends JFrame {
 		return topPanel;
 	}
 
-	public JPanel newProcessQueueFrame() {
+	public JPanel newProcessQueueFrame(DefaultListModel<String> processes) {
 		/**
 		 * Creating The Panel For Process Queue
 		 */
@@ -369,9 +375,8 @@ public class HomePage extends JFrame {
 		npqTitle.setHorizontalAlignment(SwingConstants.CENTER);
 
 		JList<String> list;
-		DefaultListModel<String> listModel = new DefaultListModel<String>();
-		listModel = setListItems(listModel);
-		list = new JList<String>(listModel);
+		newQueue = processes;
+		list = new JList<String>(newQueue);
 		list.setBackground(bg);
 		list.setForeground(fg);
 		list.setSelectionBackground(bg);
@@ -429,7 +434,7 @@ public class HomePage extends JFrame {
 
 		JList<String> list;
 		DefaultListModel<String> listModel = new DefaultListModel<String>();
-		listModel = setListItems(listModel);
+		// listModel = setListItems(listModel);
 		list = new JList<String>(listModel);
 		list.setBackground(bg);
 		list.setForeground(fg);
@@ -649,11 +654,6 @@ public class HomePage extends JFrame {
 		holder.setBackground(bg);
 		holder.setBorder(loweredBorder);
 
-		// ArrayList<Integer> list = new ArrayList<Integer>();
-		// for(int i = 1; i < 11; i++) {
-		// list.add(100 * 1);
-		// }
-
 		// ArrayList<JPanel> panels = getMemoryPanels(list);
 		for (JPanel panel : panels) {
 			holder.add(panel);
@@ -676,10 +676,9 @@ public class HomePage extends JFrame {
 		return memoryPanel;
 	}
 
-	public DefaultListModel<String> setListItems(DefaultListModel<String> lm) {
-
-		for (int i = 0; i < 50; i++) {
-			lm.addElement("Element ".concat(String.valueOf(i + 1)));
+	public DefaultListModel<String> setNewQueue(DefaultListModel<String> lm) {
+		for (int i = 0; i < PCB.newQueue.queue.size(); i++) {
+			lm.add(i, "Process ".concat(String.valueOf(PCB.getQueue().getProcess(i).getBlock().getProcessID())));
 		}
 
 		return lm;
@@ -709,29 +708,35 @@ public class HomePage extends JFrame {
 		 * Creating Buttons
 		 * Adding Buttons to Button Panel
 		 */
-		JButton startButton = new JButton("Start");
-		startButton.setBackground(bga);
-		startButton.setOpaque(true);
-		startButton.setBorder(BorderFactory.createRaisedBevelBorder());
-		startButton.setForeground(fg);
-		startButton.getModel().addChangeListener(new ChangeListener() {
+		JButton addProcess = new JButton("Add Process");
+		addProcess.setBackground(bga);
+		addProcess.setOpaque(true);
+		addProcess.setBorder(BorderFactory.createRaisedBevelBorder());
+		addProcess.setForeground(fg);
+		addProcess.getModel().addChangeListener(new ChangeListener() {
 			@Override
 			public void stateChanged(ChangeEvent e) {
 				ButtonModel model = (ButtonModel) e.getSource();
 				if (model.isPressed()) {
-					startButton.setBackground(bg);
+					addProcess.setBackground(bg);
 				} else {
-					startButton.setBackground(bga);
+					addProcess.setBackground(bga);
 				}
 			}
 
+		});
+		addProcess.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				update();
+			}
 		});
 
 		c.gridx = 0;
 		c.gridy = 0;
 		c.gridwidth = GridBagConstraints.REMAINDER;
 		c.anchor = GridBagConstraints.CENTER;
-		buttonPanel.add(startButton, c);
+		buttonPanel.add(addProcess, c);
 
 		JButton pauseButton = new JButton("Pause");
 		pauseButton.setBackground(bga);
@@ -830,7 +835,6 @@ public class HomePage extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				System.out.print("Show Fragmentation");
-				update(panelSizes);
 			}
 		});
 
@@ -933,12 +937,24 @@ public class HomePage extends JFrame {
 		return list;
 	}
 
-	public void update(ArrayList<Integer> list) {
-		ArrayList<JPanel> panelSizes = getMemoryPanels(list);
-		JPanel newMemoryFramesJPanel = memoryFrames(panelSizes);
+	public void update() {
+		DefaultListModel<String> newQueueList = updateNewQueue();
+
 		dispose();
-		HomePage h2 = new HomePage(newMemoryFramesJPanel);
+		HomePage h2 = new HomePage(newQueueList);
 		h2.setVisible(true);
+	}
+
+	public DefaultListModel<String> updateNewQueue() {
+		newQueue = new DefaultListModel<String>();
+		PCB.AddProcess(1);
+
+		for (int i = 0; i < PCB.newQueue.queue.size(); i++) {
+			newQueue.addElement(
+					"Process ".concat(String.valueOf(PCB.getQueue().getProcess(i).getBlock().getProcessID())));
+		}
+
+		return newQueue;
 	}
 
 }
