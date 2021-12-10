@@ -1,4 +1,4 @@
-//package net.processmanagmentgui.swing;
+package net.processmanagmentgui.swing;
 
 import java.awt.BorderLayout;
 import java.awt.Container;
@@ -83,6 +83,7 @@ public class HomePage extends JFrame {
 
 	private static ProcessGenerator PCB;
 	private DefaultListModel<String> newQueue;
+	private DefaultListModel<String> readyQueue;
 
 	public static void main(String[] args) {
 		PCB = new ProcessGenerator();
@@ -142,7 +143,8 @@ public class HomePage extends JFrame {
 		 * Creating a Ready Process Queue Frame
 		 * Adding the Ready Process Queue Frame to the Content Container
 		 */
-		JPanel readyProcessQueueFrame = readyProcessQueueFrame();
+		readyQueue = new DefaultListModel<String>();
+		JPanel readyProcessQueueFrame = readyProcessQueueFrame(readyQueue);
 		contentContainer.add(readyProcessQueueFrame);
 
 		/**
@@ -182,7 +184,7 @@ public class HomePage extends JFrame {
 		mainContainer.add(contentContainer, BorderLayout.CENTER);
 	}
 
-	public HomePage(DefaultListModel<String> processes) {
+	public HomePage(DefaultListModel<String> processes, DefaultListModel<String> readyQueueProcesses) {
 		/**
 		 * Window Setup
 		 */
@@ -224,7 +226,7 @@ public class HomePage extends JFrame {
 		 * Creating a Ready Process Queue Frame
 		 * Adding the Ready Process Queue Frame to the Content Container
 		 */
-		JPanel readyProcessQueueFrame = readyProcessQueueFrame();
+		JPanel readyProcessQueueFrame = readyProcessQueueFrame(readyQueueProcesses);
 		contentContainer.add(readyProcessQueueFrame);
 
 		/**
@@ -407,7 +409,7 @@ public class HomePage extends JFrame {
 		return leftPanel;
 	}
 
-	public JPanel readyProcessQueueFrame() {
+	public JPanel readyProcessQueueFrame(DefaultListModel<String> readyQueueProcesses) {
 		/**
 		 * Creating the Panel for Ready Process Queue
 		 */
@@ -433,9 +435,8 @@ public class HomePage extends JFrame {
 		rpqTitle.setHorizontalAlignment(SwingConstants.CENTER);
 
 		JList<String> list;
-		DefaultListModel<String> listModel = new DefaultListModel<String>();
-		// listModel = setListItems(listModel);
-		list = new JList<String>(listModel);
+		readyQueue = readyQueueProcesses;
+		list = new JList<String>(readyQueue);
 		list.setBackground(bg);
 		list.setForeground(fg);
 		list.setSelectionBackground(bg);
@@ -728,7 +729,7 @@ public class HomePage extends JFrame {
 		addProcess.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				update();
+				update("NewQueue");
 			}
 		});
 
@@ -738,43 +739,49 @@ public class HomePage extends JFrame {
 		c.anchor = GridBagConstraints.CENTER;
 		buttonPanel.add(addProcess, c);
 
-		JButton pauseButton = new JButton("Pause");
-		pauseButton.setBackground(bga);
-		pauseButton.setOpaque(true);
-		pauseButton.setBorder(BorderFactory.createRaisedBevelBorder());
-		pauseButton.setForeground(fg);
-		pauseButton.getModel().addChangeListener(new ChangeListener() {
+		JButton lts = new JButton("L-T Scheduler");
+		lts.setBackground(bga);
+		lts.setOpaque(true);
+		lts.setBorder(BorderFactory.createRaisedBevelBorder());
+		lts.setForeground(fg);
+		lts.getModel().addChangeListener(new ChangeListener() {
 			@Override
 			public void stateChanged(ChangeEvent e) {
 				ButtonModel model = (ButtonModel) e.getSource();
 				if (model.isPressed()) {
-					pauseButton.setBackground(bg);
+					lts.setBackground(bg);
 				} else {
-					pauseButton.setBackground(bga);
+					lts.setBackground(bga);
 				}
 			}
 
+		});
+		lts.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				update("ReadyQueue");
+			}
 		});
 
 		c.gridwidth = 1;
 		c.weightx = 0.5;
 		c.gridx = 0;
 		c.gridy = 1;
-		buttonPanel.add(pauseButton, c);
+		buttonPanel.add(lts, c);
 
-		JButton resetButton = new JButton("Reset");
-		resetButton.setBackground(bga);
-		resetButton.setOpaque(true);
-		resetButton.setBorder(BorderFactory.createRaisedBevelBorder());
-		resetButton.setForeground(fg);
-		resetButton.getModel().addChangeListener(new ChangeListener() {
+		JButton sts = new JButton("S-T Scheduler");
+		sts.setBackground(bga);
+		sts.setOpaque(true);
+		sts.setBorder(BorderFactory.createRaisedBevelBorder());
+		sts.setForeground(fg);
+		sts.getModel().addChangeListener(new ChangeListener() {
 			@Override
 			public void stateChanged(ChangeEvent e) {
 				ButtonModel model = (ButtonModel) e.getSource();
 				if (model.isPressed()) {
-					resetButton.setBackground(bg);
+					sts.setBackground(bg);
 				} else {
-					resetButton.setBackground(bga);
+					sts.setBackground(bga);
 				}
 			}
 
@@ -783,7 +790,7 @@ public class HomePage extends JFrame {
 		c.weightx = 0.5;
 		c.gridx = 1;
 		c.gridy = 1;
-		buttonPanel.add(resetButton, c);
+		buttonPanel.add(sts, c);
 
 		JButton stopButton = new JButton("Stop");
 		stopButton.setBackground(bga);
@@ -937,11 +944,28 @@ public class HomePage extends JFrame {
 		return list;
 	}
 
-	public void update() {
-		DefaultListModel<String> newQueueList = updateNewQueue();
+	public void update(String updateThis) {
+		DefaultListModel<String> newQueueList = new DefaultListModel<String>();
+		DefaultListModel<String> readyQueueList = new DefaultListModel<String>();
+
+		switch (updateThis) {
+			case "NewQueue":
+				// Updating New Queue
+				newQueueList = updateNewQueue();
+				readyQueueList = readyQueue;
+				break;
+			case "ReadyQueue":
+				// Updating Ready Queue
+				readyQueueList = updateReadyQueue();
+				for (int i = 0; i < PCB.newQueue.queue.size(); i++) {
+					newQueueList.addElement(
+							"Process ".concat(String.valueOf(PCB.getQueue().getProcess(i).getBlock().getProcessID())));
+				}
+				break;
+		}
 
 		dispose();
-		HomePage h2 = new HomePage(newQueueList);
+		HomePage h2 = new HomePage(newQueueList, readyQueueList);
 		h2.setVisible(true);
 	}
 
@@ -957,4 +981,11 @@ public class HomePage extends JFrame {
 		return newQueue;
 	}
 
+	public DefaultListModel<String> updateReadyQueue() {
+		readyQueue = new DefaultListModel<String>();
+		// PCB.getQueue().queue.getFirst();
+		Process temp = PCB.getQueue().queue.removeFirst();
+		readyQueue.addElement("Process ".concat(String.valueOf(temp.getBlock().getProcessID())));
+		return readyQueue;
+	}
 }
